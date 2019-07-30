@@ -61,6 +61,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
   private String mPublicKey;
   private Stripe mStripe;
   private PayFlow mPayFlow;
+  private Promise scaAuthenticatePromise = null;
   private ReadableMap mErrorCodes;
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
@@ -70,6 +71,44 @@ public class StripeModule extends ReactContextBaseJavaModule {
       boolean handled = getPayFlow().onActivityResult(activity, requestCode, resultCode, data);
       if (!handled) {
         super.onActivityResult(activity, requestCode, resultCode, data);
+
+        if(scaAuthenticatePromise != null) {
+          mStripe.onPaymentResult(requestCode, data,
+                  new ApiResultCallback<PaymentIntentResult>() {
+                    @Override
+                    public void onSuccess(@NonNull PaymentIntentResult result) {
+                      // If authentication succeeded, the PaymentIntent will
+                      // have user actions resolved; otherwise, handle the
+                      // PaymentIntent status as appropriate (e.g. the
+                      // customer may need to choose a new payment method)
+
+                      final PaymentIntent.Status status =
+                              result.getIntent().getStatus();
+                      if (PaymentIntent.Status.RequiresCapture == status || PaymentIntent.Status.Succeeded == status) {
+                        if(scaAuthenticatePromise != null)
+                        {
+                          scaAuthenticatePromise.resolve(status);
+                        }
+                      } else {
+                        if(scaAuthenticatePromise != null)
+                        {
+                          scaAuthenticatePromise.reject(status);
+                        }
+                      }
+
+                      scaAuthenticatePromise = null;
+                    }
+
+                    @Override
+                    public void onError(@NonNull Exception e) {
+                      if(scaAuthenticatePromise != null)
+                      {
+                        scaAuthenticatePromise.reject(e.getMessage());
+                      }
+                      scaAuthenticatePromise = null;
+                    }
+                  });
+        }
       }
     }
   };
@@ -413,6 +452,9 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
             if (paymentIntent != null && paymentIntent.requiresAction()) {
 
+              scaAuthenticatePromise = promise;
+              mStripe.authenticatePayment(getCurrentActivity(), paymentIntent.getClientSecret());
+              /*
               Uri redirectUrl = paymentIntent.getRedirectUrl();
               if (redirectUrl != null) {
                 if (getCurrentActivity() == null) {
@@ -426,7 +468,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
                 getCurrentActivity().startActivity(
                         new Intent(Intent.ACTION_VIEW, redirectUrl));
-              }
+              }*/
             } else {
               promise.resolve(paymentIntent.getId());
             }
@@ -438,10 +480,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
         promise.reject(toErrorCode(ex), ex.getMessage());
       }
     } else {
-      promise.reject(
-              getErrorCode(mErrorCodes, "paymentIntentParameterMissing"),
-              getDescription(mErrorCodes, "paymentIntentParameterMissing")
-      );
+      promise.reject("no param");
     }
   }
 }
