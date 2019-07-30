@@ -170,6 +170,15 @@ class Stripe {
     )
     return StripeModule.createSourceWithParams(params)
   }
+
+  handleCardAction = (params = {}) => {
+    checkInit(this)
+    checkArgs(
+      types.handleCardActionPropType,
+      params, 'params', 'Stripe.handleCardAction'
+    )
+    return StripeModule.handleCardAction(params)
+  }
 }
 
 export default new Stripe()
