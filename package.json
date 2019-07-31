@@ -1,20 +1,45 @@
 {
-  "name": "tipsi-stripe",
-  "version": "7.5.1",
-  "description": "React Native Stripe binding for iOS/Andriod platforms",
-  "main": "src/index.js",
-  "scripts": {
-    "ci": "scripts/local-ci.sh",
-    "build-docs": "scripts/build-docs.sh",
-    "start-docs": "npm start --prefix website/docs",
-    "test": "tape -r esm src/**/*.test.js",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix"
-  },
-  "repository": {
+  "_args": [
+    [
+      "git+https://github.com/ledouxvi/tipsi-stripe.git",
+      "/Users/utilisateur/Documents/phenix_app"
+    ]
+  ],
+  "_from": "git+https://github.com/ledouxvi/tipsi-stripe.git",
+  "_id": "tipsi-stripe@git+https://github.com/ledouxvi/tipsi-stripe.git#14b41b2db23aa20b790e1669dc5d48dffa4d9092",
+  "_inBundle": false,
+  "_integrity": "",
+  "_location": "/tipsi-stripe",
+  "_phantomChildren": {},
+  "_requested": {
     "type": "git",
-    "url": "git+https://github.com/tipsi/tipsi-stripe.git"
+    "raw": "git+https://github.com/ledouxvi/tipsi-stripe.git",
+    "rawSpec": "git+https://github.com/ledouxvi/tipsi-stripe.git",
+    "saveSpec": "git+https://github.com/ledouxvi/tipsi-stripe.git",
+    "fetchSpec": "https://github.com/ledouxvi/tipsi-stripe.git",
+    "gitCommittish": null
   },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "git+https://github.com/ledouxvi/tipsi-stripe.git#14b41b2db23aa20b790e1669dc5d48dffa4d9092",
+  "_spec": "git+https://github.com/ledouxvi/tipsi-stripe.git",
+  "_where": "/Users/utilisateur/Documents/phenix_app",
+  "author": {
+    "name": "Tipsi"
+  },
+  "bugs": {
+    "url": "https://github.com/tipsi/tipsi-stripe/issues"
+  },
+  "description": "React Native Stripe binding for iOS/Andriod platforms",
+  "devDependencies": {
+    "eslint": "4.19.1",
+    "eslint-config-tipsi": "2.0.3",
+    "esm": "3.0.28",
+    "prop-types": "15.6.1",
+    "tape": "4.9.0"
+  },
+  "homepage": "https://github.com/tipsi/tipsi-stripe#readme",
   "keywords": [
     "react",
     "react-native",
@@ -22,27 +47,30 @@
     "ios",
     "android"
   ],
-  "author": "Tipsi",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/tipsi/tipsi-stripe/issues"
+  "main": "src/index.js",
+  "name": "tipsi-stripe",
+  "peerDependencies": {
+    "react": ">=15.4.0 || >=16.x",
+    "react-native": ">=0.40"
   },
-  "homepage": "https://github.com/tipsi/tipsi-stripe#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tipsi/tipsi-stripe.git"
+  },
   "rnpm": {
     "commands": {
       "prelink": "node_modules/tipsi-stripe/scripts/pre-link.sh",
       "postlink": "node_modules/tipsi-stripe/scripts/post-link.sh"
     }
   },
-  "peerDependencies": {
-    "react": ">=15.4.0 || >=16.x",
-    "react-native": ">=0.40"
+  "scripts": {
+    "build-docs": "scripts/build-docs.sh",
+    "ci": "scripts/local-ci.sh",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "start-docs": "npm start --prefix website/docs",
+    "test": "tape -r esm src/**/*.test.js"
   },
-  "devDependencies": {
-    "eslint": "4.19.1",
-    "eslint-config-tipsi": "2.0.3",
-    "esm": "3.0.28",
-    "prop-types": "15.6.1",
-    "tape": "4.9.0"
-  }
+  "version": "7.5.1"
 }

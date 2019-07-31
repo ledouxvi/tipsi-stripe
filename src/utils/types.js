@@ -168,3 +168,8 @@ export const createSourceWithParamsPropType = {
   id: PropTypes.string,
   last4: PropTypes.string,
 }
+
+
+export const handleCardActionPropType = {
+  client_secret: PropTypes.string.isRequired,
+}

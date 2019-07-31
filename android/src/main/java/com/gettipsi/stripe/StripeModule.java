@@ -15,14 +15,16 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
-import com.gettipsi.stripe.dialog.AddCardDialogFragment;
 import com.gettipsi.stripe.util.ArgCheck;
 import com.gettipsi.stripe.util.Converters;
 import com.gettipsi.stripe.util.Fun0;
 import com.google.android.gms.wallet.WalletConstants;
+import com.stripe.android.ApiResultCallback;
+import com.stripe.android.PaymentIntentResult;
 import com.stripe.android.SourceCallback;
 import com.stripe.android.Stripe;
 import com.stripe.android.TokenCallback;
+import com.stripe.android.model.PaymentIntent;
 import com.stripe.android.model.Source;
 import com.stripe.android.model.SourceParams;
 import com.stripe.android.model.Token;
@@ -61,6 +63,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
   private String mPublicKey;
   private Stripe mStripe;
   private PayFlow mPayFlow;
+  private Promise mSCAuthenticatePromise = null;
   private ReadableMap mErrorCodes;
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
@@ -70,6 +73,43 @@ public class StripeModule extends ReactContextBaseJavaModule {
       boolean handled = getPayFlow().onActivityResult(activity, requestCode, resultCode, data);
       if (!handled) {
         super.onActivityResult(activity, requestCode, resultCode, data);
+        if(mSCAuthenticatePromise != null) {
+          mStripe.onPaymentResult(requestCode, data,
+                  new ApiResultCallback<PaymentIntentResult>() {
+                    @Override
+                    public void onSuccess(@NonNull PaymentIntentResult result) {
+                      // If authentication succeeded, the PaymentIntent will
+                      // have user actions resolved; otherwise, handle the
+                      // PaymentIntent status as appropriate (e.g. the
+                      // customer may need to choose a new payment method)
+
+                      final PaymentIntent.Status status =
+                              result.getIntent().getStatus();
+                      if (PaymentIntent.Status.RequiresCapture == status || PaymentIntent.Status.Succeeded == status) {
+                        if(mSCAuthenticatePromise != null)
+                        {
+                          mSCAuthenticatePromise.resolve(status.code);
+                        }
+                      } else {
+                        if(mSCAuthenticatePromise != null)
+                        {
+                          mSCAuthenticatePromise.reject("-200", status.code);
+                        }
+                      }
+
+                      mSCAuthenticatePromise = null;
+                    }
+
+                    @Override
+                    public void onError(@NonNull Exception e) {
+                      if(mSCAuthenticatePromise != null)
+                      {
+                        mSCAuthenticatePromise.reject("-200", e.getMessage());
+                      }
+                      mSCAuthenticatePromise = null;
+                    }
+                  });
+        }
       }
     }
   };
@@ -197,6 +237,8 @@ public class StripeModule extends ReactContextBaseJavaModule {
       ArgCheck.nonNull(currentActivity);
       ArgCheck.notEmptyString(mPublicKey);
 
+      promise.reject("666", "not supported");
+/*
       final AddCardDialogFragment cardDialog = AddCardDialogFragment.newInstance(
         mPublicKey,
         getErrorCode(mErrorCodes, "cancelled"),
@@ -204,7 +246,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
         params.hasKey("createCardSource") && params.getBoolean("createCardSource")
       );
       cardDialog.setPromise(promise);
-      cardDialog.show(currentActivity.getFragmentManager(), "AddNewCard");
+      cardDialog.show(currentActivity.getFragmentManager(), "AddNewCard");*/
     } catch (Exception e) {
       promise.reject(toErrorCode(e), e.getMessage());
     }
@@ -289,7 +331,7 @@ public class StripeModule extends ReactContextBaseJavaModule {
 
       @Override
       public void onSuccess(Source source) {
-        if (Source.REDIRECT.equals(source.getFlow())) {
+        if (Source.SourceFlow.REDIRECT.equals(source.getFlow())) {
           Activity currentActivity = getCurrentActivity();
           if (currentActivity == null) {
             promise.reject(
@@ -369,19 +411,19 @@ public class StripeModule extends ReactContextBaseJavaModule {
         }
 
         switch (source.getStatus()) {
-          case Source.CHARGEABLE:
-          case Source.CONSUMED:
+          case Source.SourceStatus.CHARGEABLE:
+          case Source.SourceStatus.CONSUMED:
             promise.resolve(convertSourceToWritableMap(source));
             break;
-          case Source.CANCELED:
+          case Source.SourceStatus.CANCELED:
             promise.reject(
               getErrorCode(mErrorCodes, "redirectCancelled"),
               getDescription(mErrorCodes, "redirectCancelled")
             );
             break;
-          case Source.PENDING:
-          case Source.FAILED:
-          case Source.UNKNOWN:
+          case Source.SourceStatus.PENDING:
+          case Source.SourceStatus.FAILED:
+          default:
             promise.reject(
               getErrorCode(mErrorCodes, "redirectFailed"),
               getDescription(mErrorCodes, "redirectFailed")
@@ -390,6 +432,61 @@ public class StripeModule extends ReactContextBaseJavaModule {
         return null;
       }
     }.execute();
+  }
+
+  @ReactMethod
+  public void handleCardAction(ReadableMap params, final Promise promise) {
+    final String paymentIntentClientSecret = params.getString("client_secret");
+
+    if (paymentIntentClientSecret != null) {
+
+      try {
+
+        AsyncTask.execute(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              // retrieve the PaymentIntent on a background thread
+              final PaymentIntent paymentIntent =
+                      mStripe.retrievePaymentIntentSynchronous(
+                              paymentIntentClientSecret,
+                              mPublicKey);
+
+              if (paymentIntent != null && paymentIntent.requiresAction()) {
+                final Activity currentActivity = getCurrentActivity();
+                if(currentActivity != null) {
+                  mSCAuthenticatePromise = promise;
+                  mStripe.authenticatePayment(getCurrentActivity(), paymentIntentClientSecret);
+                }
+                /*
+              Uri redirectUrl = paymentIntent.getRedirectUrl();
+              if (redirectUrl != null) {
+                if (getCurrentActivity() == null) {
+                  promise.reject(
+                          getErrorCode(mErrorCodes, "paymentIntentRetrieveFailed"),
+                          getDescription(mErrorCodes, "paymentIntentRetrieveFailed")
+                  );
+                } else {
+                  mPromise = promise;
+                }
+
+                getCurrentActivity().startActivity(
+                        new Intent(Intent.ACTION_VIEW, redirectUrl));
+              } */
+              } else {
+                promise.resolve(paymentIntent.getId());
+              }
+            } catch (Exception ex) {
+              promise.reject(toErrorCode(ex), ex.getMessage());
+            }
+          }
+        });
+      } catch (Exception ex) {
+        promise.reject(toErrorCode(ex), ex.getMessage());
+      }
+    } else {
+      promise.reject("-201", "no param");
+    }
   }
 
 }
