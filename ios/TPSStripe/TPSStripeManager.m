@@ -367,12 +367,12 @@ RCT_EXPORT_METHOD(paymentRequestWithCardForm:(NSDictionary *)options
     [configuration setRequiredBillingAddressFields:requiredBillingAddressFields];
     [configuration setCompanyName:companyName];
     [configuration setPublishableKey:nextPublishableKey];
-    [configuration setCreateCardSources:options[@"createCardSource"] ? options[@"createCardSource"] : false];
+    //[configuration setCreateCardSources:options[@"createCardSource"] ? options[@"createCardSource"] : false];
 
     STPAddCardViewController *addCardViewController = [[STPAddCardViewController alloc] initWithConfiguration:configuration theme:theme];
     [addCardViewController setDelegate:self];
     [addCardViewController setPrefilledInformation:prefilledInformation];
-    [addCardViewController setManagedAccountCurrency:managedAccountCurrency];
+    //[addCardViewController setManagedAccountCurrency:managedAccountCurrency];
     // STPAddCardViewController must be shown inside a UINavigationController.
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:addCardViewController];
     [navigationController setModalPresentationStyle:formPresentation];
@@ -460,6 +460,42 @@ RCT_EXPORT_METHOD(openApplePaySetup) {
     if ([library respondsToSelector:NSSelectorFromString(@"openPaymentSetup")]) {
         [library openPaymentSetup];
     }
+}
+
+RCT_EXPORT_METHOD(handleCardAction:(NSDictionary *)options
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+    if(!requestIsCompleted) {
+        NSDictionary *error = [errorCodes valueForKey:kErrorKeyBusy];
+        reject(error[kErrorKeyCode], error[kErrorKeyDescription], nil);
+        return;
+    }
+
+    NSString *clientSecret = options[@"client_secret"] ? options[@"client_secret"] : nil;
+    if (clientSecret != nil)
+    {
+        [[STPPaymentHandler sharedHandler] handleNextActionForPayment:clientSecret withAuthenticationContext:self returnURL:nil completion:^(STPPaymentHandlerActionStatus status, STPPaymentIntent * paymentIntent, NSError * handlerError) {
+            switch (status) {
+                case STPPaymentHandlerActionStatusSucceeded:
+                    resolve(@"success");
+                    break;
+                case STPPaymentHandlerActionStatusCanceled:
+                    reject(@"-200", @"cancel authenticate", nil);
+                    break;
+                case STPPaymentHandlerActionStatusFailed:
+                    reject(@"-200", @"failed authenticate", nil);
+                    break;
+                default:
+                    reject(@"-200", @"default error", nil);
+                    break;
+            }
+        }];
+    }
+    else
+    {
+        reject(@"-200", @"missing client_secret params", nil);
+    }
+
 }
 
 #pragma mark - Private
@@ -1169,6 +1205,12 @@ RCT_EXPORT_METHOD(openApplePaySetup) {
 + (BOOL)requiresMainQueueSetup
 {
     return YES;
+}
+
+#pragma mark STPAuthenticationContext
+-(UIViewController *)authenticationPresentingViewController
+{
+    return RCTPresentedViewController();
 }
 
 @end
