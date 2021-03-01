@@ -167,6 +167,7 @@ export const createSourceWithParamsPropType = {
   funding: PropTypes.string,
   id: PropTypes.string,
   last4: PropTypes.string,
+  preferredLanguage: PropTypes.string,
 }
 
 
